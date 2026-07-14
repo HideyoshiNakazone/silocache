@@ -1,10 +1,10 @@
 from silocache import (
     _get_cache,
+    _get_lock,
     _get_state,
     _set_cache,
     cache_singleton,
     flushall_singleton_cache,
-    get_lock,
 )
 
 import asyncio
@@ -272,17 +272,17 @@ class TestCacheAccess:
 
 class TestGetLock:
     async def test_same_name_yields_same_lock(self):
-        async with get_lock("resource") as first:
+        async with _get_lock("resource") as first:
             pass
-        async with get_lock("resource") as second:
+        async with _get_lock("resource") as second:
             pass
 
         assert first is second
 
     async def test_different_names_yield_different_locks(self):
-        async with get_lock("first") as first:
+        async with _get_lock("first") as first:
             pass
-        async with get_lock("second") as second:
+        async with _get_lock("second") as second:
             pass
 
         assert first is not second

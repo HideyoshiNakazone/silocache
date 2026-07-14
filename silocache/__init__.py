@@ -48,7 +48,7 @@ def _get_state() -> _LocalState:
 
 
 @contextlib.asynccontextmanager
-async def get_lock(name: str):
+async def _get_lock(name: str):
     state = _get_state()
     async with state.lock:
         if name not in state.locks:
@@ -58,13 +58,13 @@ async def get_lock(name: str):
 
 async def _set_cache(name: str, value: Any) -> None:
     state = _get_state()
-    async with get_lock(name):
+    async with _get_lock(name):
         state.caches[name] = value
 
 
 async def _get_cache(name: str) -> Any:
     state = _get_state()
-    async with get_lock(name):
+    async with _get_lock(name):
         return state.caches.get(name)
 
 
@@ -75,7 +75,7 @@ async def _get_or_set_cache[**P, T](
     **kwargs: P.kwargs,
 ) -> T:
     state = _get_state()
-    async with get_lock(name):
+    async with _get_lock(name):
         if name not in state.caches:
             if inspect.iscoroutinefunction(factory):
                 state.caches[name] = await factory(*args, **kwargs)
