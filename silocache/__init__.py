@@ -6,7 +6,7 @@ from asyncio import Lock, get_running_loop
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Any, AsyncGenerator, Protocol, overload
+from typing import Any, AsyncGenerator, Protocol
 
 
 class _NamedCallable[**P, T](Protocol):
@@ -99,42 +99,12 @@ class _SingletonDecorator(Protocol):
     ) -> Callable[P, Awaitable[T]]: ...
 
 
-@overload
-def cache_singleton[**P, T](
-    arg: _NamedCallable[P, T] | _AsyncNamedCallable[P, T],
-) -> Callable[P, Awaitable[T]]: ...
-
-
-@overload
-def cache_singleton(arg: str) -> _SingletonDecorator: ...
-
-
 def cache_singleton(
-    arg: _NamedCallable | _AsyncNamedCallable | str,
+    func: _NamedCallable | _AsyncNamedCallable,
 ) -> Callable[..., Awaitable[Any]] | _SingletonDecorator:
     """A decorator to cache a singleton instance of a class or function result,
     scoped to the current thread and event loop.
-
-    Can be used with or without a name argument:
-        @cache_singleton
-        def my_func(): ...
-
-        @cache_singleton("custom_name")
-        def my_func(): ...
     """
-    if isinstance(arg, str):
-        name = arg
-
-        def decorator(factory):
-            @wraps(factory)
-            async def named_wrapper(*args, **kwargs):
-                return await _get_or_set_cache(name, factory, *args, **kwargs)
-
-            return named_wrapper
-
-        return decorator
-
-    func = arg
 
     @wraps(func)
     async def wrapper(*args, **kwargs):
