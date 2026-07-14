@@ -59,17 +59,6 @@ settings = await get_settings()
 
 > **Note:** arguments are forwarded on the *first* call only. Once the value is cached, later calls return it regardless of arguments.
 
-### Custom cache keys
-
-By default the cache key is the function's `__name__`. Pass a string to control the key explicitly:
-
-```python
-@cache_singleton("db_engine")
-async def make_engine():
-    return create_async_engine(DATABASE_URL)
-```
-
-Two factories with the same key share one cache entry; distinct keys isolate factories that happen to share a name.
 
 ### Isolation semantics
 
