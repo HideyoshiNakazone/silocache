@@ -23,14 +23,13 @@ license = "MIT"
 readme = "README.md"
 
 # Project Dependencies
-dependencies = [
-    "poethepoet>=0.48.0",
-]
+dependencies = []
 
 [dependency-groups]
 dev = [
     "coverage>=7.8.0",
     "mypy>=1.18.1",
+    "poethepoet>=0.48.0",
     "pre-commit>=4.2.0",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",

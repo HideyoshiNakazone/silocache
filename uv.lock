@@ -508,14 +508,12 @@ wheels = [
 [[package]]
 name = "silocache"
 source = { editable = "." }
-dependencies = [
-    { name = "poethepoet" },
-]
 
 [package.dev-dependencies]
 dev = [
     { name = "coverage" },
     { name = "mypy" },
+    { name = "poethepoet" },
     { name = "pre-commit" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
@@ -523,12 +521,12 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "poethepoet", specifier = ">=0.48.0" }]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "coverage", specifier = ">=7.8.0" },
     { name = "mypy", specifier = ">=1.18.1" },
+    { name = "poethepoet", specifier = ">=0.48.0" },
     { name = "pre-commit", specifier = ">=4.2.0" },
     { name = "pytest-asyncio", specifier = ">=1.4.0" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
