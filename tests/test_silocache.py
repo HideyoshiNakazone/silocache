@@ -176,6 +176,39 @@ class TestCacheSingleton:
         assert calls == 1
         assert all(result is results[0] for result in results)
 
+    async def test_different_factories_initialize_concurrently(self):
+        started = asyncio.Event()
+        release = asyncio.Event()
+
+        @cache_singleton
+        async def blocked_factory():
+            started.set()
+            await release.wait()
+            return object()
+
+        @cache_singleton
+        async def quick_factory():
+            return object()
+
+        blocked = asyncio.create_task(blocked_factory())
+        await started.wait()
+
+        await asyncio.wait_for(quick_factory(), timeout=1)
+
+        release.set()
+        await blocked
+
+    async def test_nested_singleton_factories_do_not_deadlock(self):
+        @cache_singleton
+        async def inner():
+            return object()
+
+        @cache_singleton
+        async def outer():
+            return await inner()
+
+        assert await asyncio.wait_for(outer(), timeout=1) is await inner()
+
 
 class TestFlushallSingletonCache:
     async def test_flush_forces_factory_to_run_again(self):

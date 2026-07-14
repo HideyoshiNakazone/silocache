@@ -6,7 +6,7 @@ from asyncio import Lock, get_running_loop
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Any, Protocol, overload
+from typing import Any, AsyncGenerator, Protocol, overload
 
 
 class _NamedCallable[**P, T](Protocol):
@@ -48,11 +48,12 @@ def _get_state() -> _LocalState:
 
 
 @contextlib.asynccontextmanager
-async def _get_lock(name: str):
+async def _get_lock(name: str) -> AsyncGenerator[Lock, None]:
     state = _get_state()
     async with state.lock:
         if name not in state.locks:
             state.locks[name] = Lock()
+    async with state.locks[name]:
         yield state.locks[name]
 
 
