@@ -10,6 +10,7 @@ from silocache import (
 import asyncio
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
 
 
 class TestCacheSingleton:
@@ -137,6 +138,130 @@ class TestCacheSingleton:
             return await inner()
 
         assert await asyncio.wait_for(outer(), timeout=1) is await inner()
+
+
+class TestManagedFactories:
+    async def test_async_generator_factory_caches_yielded_value(self):
+        calls = 0
+
+        @cache_singleton
+        async def make_value():
+            nonlocal calls
+            calls += 1
+            yield object()
+
+        first = await make_value()
+        second = await make_value()
+
+        assert first is second
+        assert calls == 1
+
+    async def test_async_generator_cleanup_runs_on_flush(self):
+        cleaned_up = False
+
+        @cache_singleton
+        async def make_value():
+            nonlocal cleaned_up
+            yield object()
+            cleaned_up = True
+
+        await make_value()
+        assert not cleaned_up
+
+        await flushall_singleton_cache()
+        assert cleaned_up
+
+    async def test_flush_reruns_async_generator_factory(self):
+        @cache_singleton
+        async def make_value():
+            yield object()
+
+        first = await make_value()
+        await flushall_singleton_cache()
+        second = await make_value()
+
+        assert first is not second
+
+    async def test_asynccontextmanager_factory_is_entered_once_and_exited_on_flush(
+        self,
+    ):
+        entered = 0
+        exited = 0
+
+        @cache_singleton
+        @asynccontextmanager
+        async def make_value():
+            nonlocal entered, exited
+            entered += 1
+            try:
+                yield object()
+            finally:
+                exited += 1
+
+        first = await make_value()
+        second = await make_value()
+
+        assert first is second
+        assert entered == 1
+        assert exited == 0
+
+        await flushall_singleton_cache()
+        assert exited == 1
+
+    async def test_concurrent_async_generator_calls_invoke_factory_once(self):
+        calls = 0
+
+        @cache_singleton
+        async def slow_factory():
+            nonlocal calls
+            calls += 1
+            await asyncio.sleep(0.01)
+            yield object()
+
+        results = await asyncio.gather(*(slow_factory() for _ in range(10)))
+
+        assert calls == 1
+        assert all(result is results[0] for result in results)
+
+    async def test_cleanup_runs_in_reverse_creation_order(self):
+        order = []
+
+        @cache_singleton
+        async def first_resource():
+            yield object()
+            order.append("first")
+
+        @cache_singleton
+        async def second_resource():
+            yield object()
+            order.append("second")
+
+        await first_resource()
+        await second_resource()
+        await flushall_singleton_cache()
+
+        assert order == ["second", "first"]
+
+    async def test_custom_name_with_async_generator_factory(self):
+        @cache_singleton("shared_key")
+        async def first_factory():
+            yield object()
+
+        @cache_singleton("shared_key")
+        async def second_factory():
+            yield object()
+
+        assert await first_factory() is await second_factory()
+
+    async def test_context_manager_values_from_plain_factories_are_cached_as_is(self):
+        lock = asyncio.Lock()
+
+        @cache_singleton
+        def make_lock():
+            return lock
+
+        assert await make_lock() is lock
+        assert not lock.locked()
 
 
 class TestFlushallSingletonCache:

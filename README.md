@@ -16,6 +16,7 @@ Unlike `functools.lru_cache` or module-level globals, SiloCache never shares sta
 - **Isolation by design**: caches are scoped per thread *and* per event loop. A value created in one loop is never visible from another.
 - **Async-safe**: concurrent calls to the same factory are deduplicated with per-key `asyncio.Lock`s — the factory runs exactly once even under `asyncio.gather`.
 - **Sync and async factories**: decorate either; the wrapped function is always awaited.
+- **Async generator & context manager factories**: `yield` the value (or use `@asynccontextmanager`) and the cleanup after the yield runs when the silo is flushed.
 - **Custom cache keys**: share one cache entry across multiple factories, or isolate same-named ones.
 - **Zero-leak cleanup**: state is held in a `WeakKeyDictionary` keyed by the running loop, so it's released when the loop is garbage-collected.
 - **Fully typed** (`py.typed` included).
