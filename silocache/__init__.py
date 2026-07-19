@@ -6,7 +6,7 @@ from asyncio import Lock, get_running_loop
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Any, AsyncGenerator, Protocol, overload
+from typing import Any, AsyncGenerator, Protocol, get_args, overload
 
 
 class _NamedCallable[**P, T](Protocol):
@@ -137,6 +137,31 @@ async def flushall_singleton_cache() -> None:
     await exit_stack.aclose()
 
 
+def _make_wrapper(
+    name: str,
+    factory: _NamedCallable | _AsyncNamedCallable | _AsyncGenNamedCallable,
+) -> Callable[..., Awaitable[Any]]:
+    @wraps(factory)
+    async def wrapper(*args, **kwargs):
+        return await _get_or_set_cache(name, factory, *args, **kwargs)
+
+    if inspect.isasyncgenfunction(inspect.unwrap(factory)):
+        return_type = wrapper.__annotations__.pop("return", None)
+        yield_type = (
+            return_args[0] if len(return_args := get_args(return_type)) != 0 else Any
+        )
+        wrapper.__annotations__["return"] = yield_type
+
+        with contextlib.suppress(TypeError, ValueError):
+            wrapper.__signature__ = inspect.signature(factory).replace(  # type: ignore[attr-defined]
+                return_annotation=yield_type
+            )
+
+        del wrapper.__wrapped__  # type: ignore[attr-defined]
+
+    return wrapper
+
+
 class _SingletonDecorator(Protocol):
     @overload
     def __call__[**P, T](
@@ -202,18 +227,9 @@ def cache_singleton(
         name = arg
 
         def decorator(factory):
-            @wraps(factory)
-            async def named_wrapper(*args, **kwargs):
-                return await _get_or_set_cache(name, factory, *args, **kwargs)
-
-            return named_wrapper
+            return _make_wrapper(name, factory)
 
         return decorator
 
     func = arg
-
-    @wraps(func)
-    async def wrapper(*args, **kwargs):
-        return await _get_or_set_cache(func.__name__, func, *args, **kwargs)
-
-    return wrapper
+    return _make_wrapper(func.__name__, func)
